@@ -1,32 +1,21 @@
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs"
-import { PlusIcon } from "lucide-react"
+import { auth } from "@clerk/nextjs/server"
 
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupAction,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { WorkflowMenu } from "@/components/workflow-menu"
+import { createWorkflowAction } from "@/workflows/actions"
+import { WorkflowNavigation } from "@/workflows/components/workflow-navigation"
+import { listWorkflows } from "@/workflows/test-data-lib/data"
 
-const workflows = [
-  "dominant-wasp",
-  "honest-reindeer",
-  "expected-llama",
-  "essential-ocelot",
-  "creepy-echidna",
-  "eastern-silkworm",
-  "cultural-lion",
-  "proud-weasel",
-  "regional-bonobo",
-]
+export async function SideBar() {
+  const { orgId } = await auth()
+  const workflows = orgId ? await listWorkflows(orgId) : []
 
-export function SideBar() {
   return (
     <Sidebar>
       <SidebarHeader className="flex-row items-center justify-between gap-2">
@@ -34,16 +23,10 @@ export function SideBar() {
         <SidebarTrigger />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Workflows</SidebarGroupLabel>
-          <SidebarGroupAction title="New workflow">
-            <PlusIcon />
-            <span className="sr-only">New workflow</span>
-          </SidebarGroupAction>
-          <SidebarGroupContent>
-            <WorkflowMenu workflows={workflows} />
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <WorkflowNavigation
+          workflows={workflows}
+          createWorkflowAction={createWorkflowAction}
+        />
       </SidebarContent>
       <SidebarFooter>
         <UserButton />
