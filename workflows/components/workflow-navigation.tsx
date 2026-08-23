@@ -1,6 +1,8 @@
 "use client"
 
 import { PlusIcon, WorkflowIcon } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useTransition } from "react"
 
 import {
@@ -20,8 +22,29 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import type { workflow } from "@/lib/db/schema"
-import { WorkflowMenu } from "@/workflows/components/workflow-menu"
 import { generateSlug } from "@/workflows/nameslugs"
+
+function WorkflowMenu({ workflows }: { workflows: workflow[] }) {
+  const pathname = usePathname()
+
+  return (
+    <SidebarMenu>
+      {workflows.map((workflow) => {
+        const href = `/workflows/${workflow.id}`
+
+        return (
+          <SidebarMenuItem key={workflow.id}>
+            <SidebarMenuButton asChild isActive={pathname === href}>
+              <Link href={href}>
+                <span>{workflow.name}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
+      })}
+    </SidebarMenu>
+  )
+}
 
 export function WorkflowNavigation({
   workflows,

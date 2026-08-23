@@ -10,5 +10,13 @@ Derive database types from the Drizzle schema — never hand-write custom or par
 shapes for table rows. Export `typeof table.$inferSelect` (and `$inferInsert` when
 needed) from `lib/schema.ts` and import it. When a consumer needs only some
 columns, narrow with `Pick<Row, ...>` / `Omit<Row, ...>` rather than redeclaring a
-literal type. Don't add an insert type where `db.insert(...).values()` already
+literal type. Do not add an insert type where `db.insert(...).values()` already
 enforces the shape.
+
+# Apostrophes
+
+Do not use apostrophes in any text you write — UI copy, comments, docs, or commit
+messages. Rewrite the phrase instead of contracting it: "does not" rather than
+"doesn't", "the organization for the user" rather than "the user's organization".
+This keeps JSX free of unescaped-entity lint errors and keeps strings safe to pass
+through shell and SQL quoting.
