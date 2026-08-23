@@ -19,7 +19,12 @@ export async function SideBar() {
   return (
     <Sidebar>
       <SidebarHeader className="flex-row items-center justify-between gap-2">
-        <OrganizationSwitcher />
+        <OrganizationSwitcher
+          afterCreateOrganizationUrl="/"
+          afterSelectOrganizationUrl="/"
+          afterLeaveOrganizationUrl="/"
+
+        />
         <SidebarTrigger />
       </SidebarHeader>
       <SidebarContent>
