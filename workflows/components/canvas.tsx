@@ -1,18 +1,15 @@
 "use client"
 
-import {
-  addEdge,
-  Controls,
-  ReactFlow,
-  useEdgesState,
-  useNodesState,
-} from "@xyflow/react"
-import type { Connection, Edge, NodeTypes } from "@xyflow/react"
+import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow"
+import { Controls, ReactFlow } from "@xyflow/react"
+import type { Edge, NodeTypes } from "@xyflow/react"
 import { useTheme } from "next-themes"
-import { useCallback } from "react"
 
 import { StepNode } from "./stepnode"
 import { nodeRegistry, type StepNodeType } from "../nodes/settings"
+
+import "@liveblocks/react-ui/styles.css"
+import "@liveblocks/react-flow/styles.css"
 
 import "@xyflow/react/dist/style.css"
 
@@ -53,14 +50,16 @@ export function Canvas() {
   // read. Its own "system" mode follows the OS instead, so the two can disagree
   // and leave light nodes on a dark canvas. Pass the resolved theme instead.
   const { resolvedTheme } = useTheme()
-  const [nodes, , onNodesChange] = useNodesState(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
-  const onConnect = useCallback(
-    (connection: Connection) =>
-      setEdges((currentEdges) => addEdge(connection, currentEdges)),
-    [setEdges]
-  )
+  // Nodes and edges live in Liveblocks Storage, seeded once from the initial
+  // arrays. suspense: true means nodes and edges are never null, so this must
+  // render under a ClientSideSuspense boundary inside a room.
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
+    useLiveblocksFlow<StepNodeType, Edge>({
+      suspense: true,
+      nodes: { initial: initialNodes },
+      edges: { initial: initialEdges },
+    })
 
   // ReactFlow needs a parent with an explicit width and height.
   return (
@@ -72,12 +71,14 @@ export function Canvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onDelete={onDelete}
         colorMode={resolvedTheme === "dark" ? "dark" : "light"}
         defaultEdgeOptions={{ type: "default" }}
         fitView
         fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
       >
         <Controls />
+        <Cursors />
       </ReactFlow>
     </div>
   )
