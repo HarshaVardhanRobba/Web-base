@@ -21,6 +21,18 @@ messages. Rewrite the phrase instead of contracting it: "does not" rather than
 This keeps JSX free of unescaped-entity lint errors and keeps strings safe to pass
 through shell and SQL quoting.
 
+# React Flow
+
+The installed package is `@xyflow/react` (React Flow v12). The older `reactflow`
+package name is v11 and does not apply here.
+
+Do not write React Flow code from memory — the v11 and v12 APIs differ, and much
+training data still describes v11. Before using any React Flow API, component,
+hook, or prop, fetch https://reactflow.dev/llms.txt and follow the page it points
+to for that topic. Verify the local types under
+`node_modules/@xyflow/react/dist/esm/` when the docs and the installed version
+disagree; the installed version wins.
+
 # Trigger.dev agent skills
 
 This project has Trigger.dev agent skills installed in .agents/skills/. Before writing or changing Trigger.dev code (background tasks, scheduled tasks, realtime, or chat.agent AI agents), load the most relevant skill:
