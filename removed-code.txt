@@ -1,0 +1,213 @@
+Removed code
+============
+
+Code deleted from this project, kept here so it can be reviewed or restored.
+Newest entry at the bottom. Each entry records where the code came from, when it
+went, and why.
+
+---
+
+2026-08-24 - workflows/tasks/run-workflow.ts (lines 40-55)
+
+Local lazy Stagehand factory, replaced by createBrowser() in
+workflows/lib/browserbase.ts. It was unreachable: the run loop calls
+browser.getStagehand, nothing called this one. It also returned undefined on
+every call after the first, because the if block held the only return.
+
+    let stagehand: Stagehand | undefined
+
+    const getStagehand = async () => {
+        if (!stagehand) {
+          stagehand = new Stagehand({
+            env: "BROWSERBASE",
+            apiKey: process.env.BROWSERBASE_API_KEY,
+            model: "google/gemini-2.5-flash",
+            verbose: 0,
+          })
+          await stagehand.init()
+          return stagehand
+        }
+
+        
+    }
+
+The matching import went with it:
+
+    import { Stagehand } from "@browserbasehq/stagehand"
+
+---
+
+2026-08-24 - workflows/lib/run-step.ts (whole file, deleted - RESTORED 2026-08-24)
+
+The switch-based step runner, replaced by the registry-keyed map in
+workflows/nodes/node-executors.ts with one implementation file per node under
+workflows/nodes/executors/. The logic carried over unchanged; only the dispatch
+shape differs, and the browser is now lazy. The file was never committed, so this
+is the only copy.
+
+    import type { Stagehand } from "@browserbasehq/stagehand"
+
+    import type { StepNodeType } from "@/workflows/nodes/settings"
+
+    // Runs one node against the shared browser session and returns what it produced
+    // as a short string, so the result drops straight into run metadata and the logs
+    // panel. Throwing here fails the step, and the task decides what that means for
+    // the rest of the run.
+    export async function runStep(
+      stagehand: Stagehand,
+      node: StepNodeType
+    ): Promise<string | undefined> {
+      const { type, values } = node.data
+
+      switch (type) {
+        // The trigger only marks where the graph starts, so there is nothing to do.
+        case "start":
+          return undefined
+
+        case "open-url": {
+          const url = values.url?.trim()
+
+          if (!url) {
+            throw new Error("Open URL node needs a url")
+          }
+
+          const page =
+            stagehand.context.pages()[0] ?? (await stagehand.context.newPage())
+
+          // domcontentloaded rather than a fixed sleep: act() and extract() reason
+          // over the DOM, so waiting for every image to land buys nothing.
+          await page.goto(url, { waitUntil: "domcontentloaded" })
+
+          return `Opened ${url}`
+        }
+
+        case "act": {
+          const instruction = values.instruction?.trim()
+
+          if (!instruction) {
+            throw new Error("Act node needs an instruction")
+          }
+
+          // observe() first, then act on the action it returns. The action is what
+          // the cache stores, so a repeat run replays it without paying for
+          // inference again. A miss falls back to the plain instruction.
+          const [action] = await stagehand.observe(instruction)
+          const result = action
+            ? await stagehand.act(action)
+            : await stagehand.act(instruction)
+
+          return result.message
+        }
+
+        case "extract": {
+          const instruction = values.instruction?.trim()
+
+          if (!instruction) {
+            throw new Error("Extract node needs an instruction")
+          }
+
+          const { extraction } = await stagehand.extract(instruction)
+
+          return extraction
+        }
+
+        case "agent": {
+          const goal = values.goal?.trim()
+
+          if (!goal) {
+            throw new Error("Agent node needs a goal")
+          }
+
+          // No scripted steps: the agent decides them at runtime. This is the node
+          // that spends the most Model Gateway tokens.
+          const result = await stagehand.agent().execute(goal)
+
+          if (!result.success) {
+            throw new Error(result.message)
+          }
+
+          return result.message
+        }
+      }
+    }
+
+---
+
+2026-08-24 - workflows/lib/browserbase.ts (replaced export)
+
+withBrowserSession, replaced by createBrowser() in the same file. The old helper
+opened a cloud browser for every run, including graphs whose nodes never touch
+one; createBrowser starts it on the first getStagehand() call instead.
+
+    // One cloud browser per workflow run: every step shares the session, so a page
+    // one node opened is still open for the node after it. The Browserbase API key
+    // alone identifies the project, and leaving model unset routes the LLM calls
+    // through Model Gateway on that same key, so no provider key is needed.
+    export async function withBrowserSession<T>(
+      run: (stagehand: Stagehand) => Promise<T>
+    ): Promise<T> {
+      if (!process.env.BROWSERBASE_API_KEY) {
+        throw new Error("BROWSERBASE_API_KEY is not set")
+      }
+
+      const stagehand = new Stagehand({
+        env: "BROWSERBASE",
+        apiKey: process.env.BROWSERBASE_API_KEY,
+        verbose: 0,
+        // A cached act() replays without an LLM call. The directory lives on the
+        // machine running the task, so this pays off across steps and across local
+        // dev runs rather than across deployed ones.
+        cacheDir: ".stagehand-cache",
+      })
+
+      await stagehand.init()
+
+      try {
+        return await run(stagehand)
+      } finally {
+        await stagehand.close()
+      }
+    }
+
+---
+
+2026-08-24 - workflows/nodes/settings.ts (open-url field)
+
+Dropped from the open-url node when it started driving a real browser. It was a
+leftover HTTP idea: navigating a page has no method to choose. Saved graphs keep
+the key in values and it is ignored.
+
+    { key: "Method", label: "Method", placeholder: "POST" }
+
+--- workflows/actions.ts -------------------------------------------------
+Placeholder trigger in runWorkflowAction. It fired the starter hello-world task
+instead of the workflow, so no run ever opened a Browserbase session. Replaced
+with a trigger of run-workflow carrying workflowId and orgId.
+
+  const handle = await tasks.trigger<typeof helloWorldTask>("hello-world", {
+    message: "world",
+  });
+
+--- workflows/components/run-feedback.tsx ---------------------------------
+Rendered the hello-world output shape. run-workflow returns steps, results and
+sessionUrl instead, so this was replaced with the step list and the session link.
+
+      {run.output ? (
+        <p className="text-xs">{run.output.message}</p>
+      ) : null}
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Four blockers, all in the path before any Browserbase call:
+
+workflows/actions.ts:93 — Run button triggered "hello-world", not "run-workflow". Browser code never executed. Now triggers run-workflow with workflowId + orgId.
+trigger.config.ts:5 — dirs: ["./src/trigger"]. workflows/tasks/ never scanned, so run-workflow was not a registered task at all. Worker now reports 2 tasks.
+workflows/test-data-lib/data.ts:6 — imported @/lib/db, which starts with import "server-only" and throws inside the Trigger worker. Repointed at lib/db/client.ts, the un-guarded client that exists for exactly this.
+package.json:20 — @browserbasehq/stagehand was installed (3.7.2) but undeclared. Next npm install would have deleted it. Now declared.
+Also updated run-feedback.tsx: typed to runWorkflowTask, renders live steps from run metadata plus the Live View link instead of the old output.message.
+
+Two things left, both pre-existing and outside this fix:
+
+npm run typecheck fails: settings.ts nodeRegistry only holds start and open-url, but node-executors.ts and run-step.ts handle act, extract, agent. Those three node types need registry entries (label, icon, accent, fields) before they can be placed on a canvas or typecheck clean. esbuild ignores types, so runs work today — the next build will not.
+workflows/lib/run-step.ts and workflows/nodes/node-executors.ts are two implementations of the same dispatch. Task uses node-executors; run-step is dead.
+Dev server running on 20260824.10. Want the three node types registered?
