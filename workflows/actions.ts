@@ -2,12 +2,15 @@
 
 import {auth} from "@clerk/nextjs/server";
 import {Liveblocks, LiveblocksError} from "@liveblocks/node";
-import {configure, tasks} from "@trigger.dev/sdk";
+import {configure, tasks, runs} from "@trigger.dev/sdk";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 
 import type {helloWorldTask} from "@/src/trigger/example";
-import {createWorkflow, deleteWorkflow} from "@/workflows/test-data-lib/data";
+import {createWorkflow, deleteWorkflow, saveWorkflowGraph} from "@/workflows/test-data-lib/data";
+
+import {WorkflowGraph} from "@/lib/db/schema";
+
 
 // This project stores the Trigger.dev secret key as TRIGGER_KEY, while the SDK
 // looks for TRIGGER_SECRET_KEY by default.
@@ -70,20 +73,36 @@ export async function deleteWorkflowAction(id: string) {
   redirect("/");
 }
 
-export async function runWorkflowAction(message?: string) {
+export async function runWorkflowAction({
+  id,
+  graph,
+}: {
+  id: string
+  graph: WorkflowGraph
+}) {
   const {orgId} = await auth();
 
   if (!orgId) {
     throw new Error("No active organization");
   }
 
+  await saveWorkflowGraph({orgId, id, graph});
+
   // Trigger by id with a type-only import, so the task instance never gets
   // bundled into the server action.
   const handle = await tasks.trigger<typeof helloWorldTask>("hello-world", {
-    message,
+    message: "world",
   });
+
+
 
   // The handle carries a Public Access Token already scoped to read this one
   // run, which is what the client needs to subscribe in realtime.
   return {runId: handle.id, publicAccessToken: handle.publicAccessToken};
+}
+
+export async function cancelWorkflowRunAction(runId: string) {
+  const { orgId }= await auth()
+  if (!orgId) throw new Error("No active organization")
+  await runs.cancel(runId)
 }
