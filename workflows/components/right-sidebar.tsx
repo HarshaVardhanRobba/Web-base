@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useNodes, useReactFlow, useStoreApi } from "@xyflow/react"
 import { MoreHorizontal, Play, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 
 import {
   Accordion,
@@ -20,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ResizablePanel } from "@/components/ui/resizable"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import {
@@ -82,8 +85,9 @@ function Section({
 // Editor tab — edits the fields of the selected node.
 // ---------------------------------------------------------------------------
 
-// A single editor field for a node property.
-function FieldInput({
+// A single labelled editor field for a node property. A field that declares
+// itself multiline gets a text area, everything else a single-line input.
+function Field({
   field,
   value,
   onChange,
@@ -92,19 +96,28 @@ function FieldInput({
   value: string
   onChange: (value: string) => void
 }) {
-  // TODO: support a multiline field variant (textarea).
+  const Control = field.multiline ? Textarea : Input
+
   return (
-    <Input
-      id={field.key}
-      value={value}
-      placeholder={field.placeholder}
-      onChange={(e) => onChange(e.target.value)}
-    />
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={field.key} className="text-xs">
+        {field.label}
+      </Label>
+      <Control
+        id={field.key}
+        value={value}
+        placeholder={field.placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(field.multiline && "min-h-24 text-sm")}
+      />
+    </div>
   )
 }
 
 // The Editor tab: one input per field on the selected node, or an empty state.
 function Inspector({ node }: { node: StepNodeType | undefined }) {
+  const { updateNodeData } = useReactFlow<StepNodeType>()
+
   if (!node) {
     return (
       <Section title="Editor">
@@ -123,19 +136,20 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
           <p className="text-xs text-muted-foreground">No properties</p>
         ) : (
           def.fields.map((field) => (
-            <div key={field.key} className="flex flex-col gap-1.5">
-              <Label htmlFor={field.key} className="text-xs">
-                {field.label}
-              </Label>
-              <FieldInput
-                field={field}
-                value={values[field.key] ?? ""}
-                onChange={(value) => {
-                  // TODO: save the edit back onto the selected node.
-                  void value
-                }}
-              />
-            </div>
+            <Field
+              key={field.key}
+              field={field}
+              value={values[field.key] ?? ""}
+              onChange={(value) =>
+                // The updater form reads the node as it is in the store, so
+                // fast typing cannot write back a stale values object. The edit
+                // lands as a replace change on onNodesChange, which is what
+                // puts it into Liveblocks Storage for the whole room.
+                updateNodeData(node.id, (current) => ({
+                  values: { ...current.data.values, [field.key]: value },
+                }))
+              }
+            />
           ))
         )}
       </div>
@@ -156,11 +170,77 @@ const sections: { kind: StepNodeKind; label: string }[] = [
 // Every node type from the registry, filtered into the groups below.
 const definitions = Object.values(nodeRegistry)
 
+// Roughly the size a step node renders at, used to drop a new node centered on
+// the view rather than hanging off its center point. The real size is only known
+// once the node has been measured, so this stays an approximation.
+const NODE_SIZE = { width: 200, height: 52 }
+
+// The next title for a node type: "Open URL 1", "Open URL 2", and so on. Numbers
+// already in use are skipped, and so is any unnumbered node of the same type, so
+// a title never repeats.
+function nextTitle(label: string, siblings: StepNodeType[]) {
+  let highest = siblings.length
+
+  for (const sibling of siblings) {
+    const suffix = sibling.data.title.startsWith(`${label} `)
+      ? sibling.data.title.slice(label.length + 1)
+      : ""
+
+    // Only a plain number counts, so "Open URL 2" is a sibling of "Open URL"
+    // but "Open URL copy" is left alone.
+    if (suffix !== "" && /^[0-9]+$/.test(suffix)) {
+      highest = Math.max(highest, Number(suffix))
+    }
+  }
+
+  return `${label} ${highest + 1}`
+}
+
 // The Toolbar tab: a button per node type that adds it to the canvas.
 function Palette() {
+  const { getNodes, addNodes, screenToFlowPosition } =
+    useReactFlow<StepNodeType>()
+  const store = useStoreApi()
+
   const add = (type: NodeType) => {
-    // TODO: add the clicked node to the canvas (one trigger max).
-    void type
+    const def = nodeRegistry[type]
+    const nodes = getNodes()
+
+    // A workflow starts in one place, so a second trigger has nothing to mean.
+    if (def.kind === "trigger" && nodes.some((n) => n.data.kind === "trigger")) {
+      toast.error("A workflow can only have one trigger")
+      return
+    }
+
+    // The canvas pane is what the user is looking at, so its center in screen
+    // coordinates is the point to translate into the flow.
+    const rect = store.getState().domNode?.getBoundingClientRect()
+    const center = rect
+      ? screenToFlowPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        })
+      : { x: 0, y: 0 }
+
+    // addNodes reports an add change through onNodesChange, which is where
+    // Liveblocks picks it up and writes it to Storage for everyone in the room.
+    addNodes({
+      id: crypto.randomUUID(),
+      type: "step",
+      position: {
+        x: center.x - NODE_SIZE.width / 2,
+        y: center.y - NODE_SIZE.height / 2,
+      },
+      data: {
+        type,
+        kind: def.kind,
+        title: nextTitle(
+          def.label,
+          nodes.filter((n) => n.data.type === type)
+        ),
+        values: {},
+      },
+    })
   }
 
   return (
@@ -253,8 +333,10 @@ function RunButton() {
 export function RightSidebar() {
   const [tab, setTab] = useState("toolbar")
 
-  // TODO: read the currently selected node from React Flow.
-  const selected: StepNodeType | undefined = undefined
+  // The nodes come from the shared React Flow store, so the sidebar sees the
+  // same selection the canvas does.
+  const nodes = useNodes<StepNodeType>()
+  const selected = nodes.find((node) => node.selected)
 
   // TODO: auto-switch to the Editor tab when the selection changes.
 

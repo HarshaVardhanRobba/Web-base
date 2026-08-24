@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server"
 import { Liveblocks } from "@liveblocks/node"
+import { ReactFlowProvider } from "@xyflow/react"
 import { notFound } from "next/navigation"
 
 import { Room } from "@/workflows/components/room"
@@ -49,7 +50,12 @@ export default async function Page({
 
   return (
     <Room roomId={id}>
-      <WorkflowShell workflowId={id} />
+      {/* The palette in the sidebar adds nodes to the canvas, so both have to
+          read the same React Flow store. The provider sits above the shell,
+          which renders the canvas and the sidebar side by side. */}
+      <ReactFlowProvider>
+        <WorkflowShell workflowId={id} />
+      </ReactFlowProvider>
     </Room>
   )
 }

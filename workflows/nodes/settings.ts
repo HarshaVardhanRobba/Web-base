@@ -3,11 +3,14 @@ import { Globe, MousePointerClick, type LucideIcon } from "lucide-react"
 
 export type StepNodeKind = "trigger" | "action"
 
-// One editable field on a node, rendered as an input in the inspector later.
+// One editable field on a node, rendered as an input in the inspector. Set
+// multiline on a field that holds more than a line of text, such as a body or a
+// script, and the inspector gives it a text area instead of a single-line input.
 export type NodeField = {
   key: string
   label: string
   placeholder?: string
+  multiline?: boolean
 }
 
 // A node type's manifest entry. Add a node by adding an entry to nodeRegistry.
@@ -35,7 +38,7 @@ export const nodeRegistry = {
     label: "Open URL",
     icon: Globe,
     accent: "bg-emerald-500 text-white",
-    fields: [{ key: "url", label: "URL", placeholder: "https://youtube.com" }],
+    fields: [{ key: "url", label: "URL", placeholder: "https://youtube.com" },{ key: "Method", label: "Method", placeholder: "POST" }],
   },
 } satisfies Record<string, NodeDefinition>
 
