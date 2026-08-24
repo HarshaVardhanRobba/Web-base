@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { Liveblocks } from "@liveblocks/node"
+import { request } from "https"
 
 if (!process.env.LIVEBLOCKS_SECRET_KEY) {
   throw new Error("LIVEBLOCKS_SECRET_KEY is not set")

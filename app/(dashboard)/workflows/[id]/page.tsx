@@ -37,6 +37,7 @@ export default async function Page({
   // else can join. Ownership is already proven by the getWorkflow lookup above,
   // which filters on orgId. Failures fall through to error.tsx.
   await liveblocks.getOrCreateRoom(id, {
+    organizationId: orgId,
     defaultAccesses: [],
     groupsAccesses: {
       [orgId]: ["room:write"],

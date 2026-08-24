@@ -16,14 +16,19 @@ export function WorkflowShell({ workflowId }: { workflowId: string }) {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize="8rem" minSize="6rem">
-            <div className="flex size-full items-center justify-center text-muted-foreground text-sm">
+            <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
               Logs
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
       </ResizablePanel>
       <ResizableHandle withHandle />
-      <ResizablePanel defaultSize="16rem" minSize="14rem" maxSize="36rem">
+      <ResizablePanel
+        defaultSize="16rem"
+        minSize="14rem"
+        maxSize="36rem"
+        groupResizeBehavior="preserve-pixel-size"
+      >
         <RightSidebar />
       </ResizablePanel>
     </ResizablePanelGroup>

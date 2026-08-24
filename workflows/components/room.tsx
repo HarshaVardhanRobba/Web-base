@@ -21,7 +21,26 @@ export function Room({
     // token. Room access comes from the permissions on the room itself, so a
     // room has to exist with groupsAccesses for the organization before anyone
     // can join it.
-    <LiveblocksProvider authEndpoint="/api/liveblocks/auth">
+    <LiveblocksProvider
+      authEndpoint="/api/liveblocks/auth"
+      resolveUsers={async ({ userIds }) => {
+        try {
+          const response = await fetch("/api/liveblocks/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userIds }),
+          })
+
+          if (!response.ok) {
+            return undefined
+          }
+
+          return await response.json()
+        } catch {
+          return undefined
+        }
+      }}
+    >
       <RoomProvider id={roomId}>
         <ClientSideSuspense
           fallback={
