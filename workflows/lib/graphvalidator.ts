@@ -1,6 +1,6 @@
 import type { WorkflowGraph } from "@/lib/db/schema"
 
-import { toposort } from "toposort"
+import toposort from "toposort"
 
 // Structural problems knowable before a run — empty array means runnable. Pure
 // (no db import) so the client can pre-flight the in-hand graph and toast,
@@ -19,7 +19,7 @@ export function validateGraph({ nodes, edges }: WorkflowGraph): string[] {
   } else {
     try {
       // toposort throws on a cycle — the run would otherwise fail mid-sort.
-      toposort(edges.map((e) => [e.source, e.target]))
+      toposort(edges.map((e): [string, string] => [e.source, e.target]))
     } catch {
       problems.push("Workflow has a cycle — remove the loop before running.")
     }

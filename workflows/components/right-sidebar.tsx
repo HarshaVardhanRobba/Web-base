@@ -24,7 +24,8 @@ import { ResizablePanel } from "@/components/ui/resizable"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { deleteWorkflowAction } from "@/workflows/actions"
+import { deleteWorkflowAction, runWorkflowAction } from "@/workflows/actions"
+import { validateGraph } from "@/workflows/lib/graphvalidator"
 
 import {
   nodeRegistry,
@@ -321,13 +322,32 @@ function ActionsMenu({ workflowId }: { workflowId: string }) {
 }
 
 // Kicks off a run of the current workflow.
-function RunButton() {
+function RunButton({ workflowId }: { workflowId: string }) {
+
+  const { getNodes, getEdges } = useReactFlow<StepNodeType>()
+  const [ispending, startTransition] = useTransition()
+
+
   return (
     <Button
       size="sm"
       variant="secondary"
+      disabled={ispending}
       onClick={() => {
         // TODO: validate the graph and run the workflow (toggle to Stop while running).
+        const graph = {
+          nodes: getNodes(),
+          edges: getEdges(),
+        }
+        const problems = validateGraph(graph)
+        if (problems.length > 0) {
+          toast.error(problems.join(" "))
+          return
+        }
+
+        startTransition(async () => {
+          await runWorkflowAction({ id: workflowId, graph })
+        })
       }}
     >
       <Play fill="primary" />
@@ -361,7 +381,7 @@ export function RightSidebar({ workflowId }: { workflowId: string }) {
       <Tabs value={tab} onValueChange={setTab} className="size-full gap-0">
         <div className="flex items-center justify-between border-b border-border p-2">
           <ActionsMenu workflowId={workflowId} />
-          <RunButton />
+          <RunButton workflowId={workflowId} />
         </div>
         <TabsList className="m-2 w-fit bg-background">
           <TabsTrigger
