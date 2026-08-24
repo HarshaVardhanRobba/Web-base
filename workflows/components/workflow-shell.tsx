@@ -29,7 +29,7 @@ export function WorkflowShell({ workflowId }: { workflowId: string }) {
         maxSize="36rem"
         groupResizeBehavior="preserve-pixel-size"
       >
-        <RightSidebar />
+        <RightSidebar workflowId={workflowId} />
       </ResizablePanel>
     </ResizablePanelGroup>
   )
