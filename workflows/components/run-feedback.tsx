@@ -2,7 +2,7 @@
 
 import { useRealtimeRun } from "@trigger.dev/react-hooks"
 
-import type { helloWorldTask } from "@/src/trigger/example"
+import type { runWorkflowTask, StepProgress } from "@/workflows/tasks/run-workflow"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -36,7 +36,7 @@ export function RunFeedback({
   runId: string
   accessToken: string
 }) {
-  const { run, error } = useRealtimeRun<typeof helloWorldTask>(runId, {
+  const { run, error } = useRealtimeRun<typeof runWorkflowTask>(runId, {
     accessToken,
     // The payload is only the message we already sent, so keep it off the wire.
     skipColumns: ["payload"],
@@ -59,6 +59,14 @@ export function RunFeedback({
 
   const isRunning = !FINISHED_STATUSES.includes(run.status)
 
+  // The task writes both of these to run metadata as it goes, so they land here
+  // before the run finishes rather than only in the final output.
+  const metadata = run.metadata as
+    | { steps?: StepProgress[]; sessionUrl?: string }
+    | undefined
+  const steps = metadata?.steps ?? []
+  const sessionUrl = metadata?.sessionUrl ?? run.output?.sessionUrl
+
   return (
     <div className="flex flex-col gap-2 rounded-md border p-2">
       <div className="flex items-center gap-2">
@@ -70,8 +78,29 @@ export function RunFeedback({
         {run.id}
       </p>
 
-      {run.output ? (
-        <p className="text-xs">{run.output.message}</p>
+      {sessionUrl ? (
+        <a
+          className="text-xs underline"
+          href={sessionUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          Watch the browser session
+        </a>
+      ) : null}
+
+      {steps.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {steps.map((step) => (
+            <li className="text-xs" key={step.id}>
+              <span className="text-muted-foreground">{step.status}</span>{" "}
+              {step.title}
+              {step.error ? (
+                <span className="text-destructive"> {step.error}</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {run.error ? (

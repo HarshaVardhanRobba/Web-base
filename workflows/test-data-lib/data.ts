@@ -1,6 +1,9 @@
 import {and, eq, desc} from "drizzle-orm";
 
-import {db} from "@/lib/db";
+// @/lib/db imports "server-only", which throws inside the Trigger.dev worker.
+// The client module is the same Drizzle instance without that guard, and this
+// file is read by both Next server code and the run-workflow task.
+import {db} from "@/lib/db/client";
 import {workflows, WorkflowGraph} from "@/lib/db/schema";
 import { validateGraph } from "@/workflows/lib/graphvalidator";
 

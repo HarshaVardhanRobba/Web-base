@@ -2,21 +2,17 @@
 
 import {auth} from "@clerk/nextjs/server";
 import {Liveblocks, LiveblocksError} from "@liveblocks/node";
-import {configure, tasks, runs} from "@trigger.dev/sdk";
+import {runs} from "@trigger.dev/sdk";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 
-import type {helloWorldTask} from "@/src/trigger/example";
+import {triggerRunWorkflow} from "@/workflows/lib/trigger-run-workflow";
+// Configures the SDK with this project key naming, for runs.cancel below.
+import "@/workflows/lib/trigger-client";
 import {createWorkflow, deleteWorkflow, saveWorkflowGraph} from "@/workflows/test-data-lib/data";
 
 import {WorkflowGraph} from "@/lib/db/schema";
 
-
-// This project stores the Trigger.dev secret key as TRIGGER_KEY, while the SDK
-// looks for TRIGGER_SECRET_KEY by default.
-configure({
-  secretKey: process.env.TRIGGER_SECRET_KEY ?? process.env.TRIGGER_KEY,
-});
 
 if (!process.env.LIVEBLOCKS_SECRET_KEY) {
   throw new Error("LIVEBLOCKS_SECRET_KEY is not set");
@@ -88,12 +84,9 @@ export async function runWorkflowAction({
 
   await saveWorkflowGraph({orgId, id, graph});
 
-  // Trigger by id with a type-only import, so the task instance never gets
-  // bundled into the server action.
-  const handle = await tasks.trigger<typeof helloWorldTask>("hello-world", {
-    message: "world",
-  });
-
+  // The helper owns both the id and the payload type, so this cannot end up
+  // triggering some other task by mistake.
+  const handle = await triggerRunWorkflow({workflowId: id, orgId});
 
 
   // The handle carries a Public Access Token already scoped to read this one

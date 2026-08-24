@@ -41,3 +41,25 @@ This project has Trigger.dev agent skills installed in .agents/skills/. Before w
 `trigger-cost-savings`,
 `trigger-getting-started`, `trigger-realtime-and-frontend`.
 <!-- TRIGGER.DEV SKILLS END-->
+
+# Trigger.dev worker code
+
+Tasks run in a plain Node worker outside Next, and the worker bundle is built
+from the directories listed in the `dirs` option in `trigger.config.ts`. Four
+rules follow from that, and `npm run check:trigger` enforces all four across the
+whole worker module graph, including files a task reaches indirectly. The check
+also runs automatically as `prebuild`.
+
+1. A file that defines a task must live under a directory in `dirs`. A task
+   outside those directories never registers, and triggering its id fails.
+2. Nothing a task can reach at runtime may import `server-only`, `next/*`,
+   `@clerk/nextjs`, or client-only React packages. Use `@/lib/db/client` rather
+   than `@/lib/db` for database access from a task: the client module is the
+   same Drizzle instance without the `server-only` guard.
+3. Every package the worker imports must be declared in `package.json`. A
+   package that only exists in `node_modules` disappears on the next install.
+4. App code triggers a task through a helper that owns both the id and the
+   payload type, such as `workflows/lib/trigger-run-workflow.ts`. Writing
+   `tasks.trigger<typeof someTask>("some-id", ...)` inline lets the id and the
+   type drift apart, which type checks fine and runs the wrong task. App code
+   must never import a task module at runtime, only `import type`.
