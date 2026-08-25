@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useRef, useState, useTransition } from "react"
 import { useNodes, useReactFlow, useStoreApi } from "@xyflow/react"
 import { MoreHorizontal, Play, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -26,6 +26,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { deleteWorkflowAction, runWorkflowAction } from "@/workflows/actions"
 import { validateGraph } from "@/workflows/lib/graphvalidator"
+import {
+  useUpstreamConnections,
+  type UpstreamConnection,
+} from "@/workflows/hooks/use-upstream-connections"
 
 import {
   nodeRegistry,
@@ -87,16 +91,25 @@ function Section({
 // Editor tab — edits the fields of the selected node.
 // ---------------------------------------------------------------------------
 
+// Either control a field can render as. The Connections chips read the caret
+// off whichever one is live, so both are handled the same way.
+type FieldElement = HTMLInputElement | HTMLTextAreaElement
+
 // A single labelled editor field for a node property. A field that declares
 // itself multiline gets a text area, everything else a single-line input.
+// inputRef and onFocus are what let a connection chip insert into this field.
 function Field({
   field,
   value,
   onChange,
+  inputRef,
+  onFocus,
 }: {
   field: NodeField
   value: string
   onChange: (value: string) => void
+  inputRef: React.RefCallback<FieldElement>
+  onFocus: () => void
 }) {
   const Control = field.multiline ? Textarea : Input
 
@@ -107,8 +120,10 @@ function Field({
       </Label>
       <Control
         id={field.key}
+        ref={inputRef}
         value={value}
         placeholder={field.placeholder}
+        onFocus={onFocus}
         onChange={(e) => onChange(e.target.value)}
         className={cn(field.multiline && "min-h-24 text-sm")}
       />
@@ -116,9 +131,45 @@ function Field({
   )
 }
 
+// One clickable output from an upstream node. Clicking it drops its token into
+// the field being edited. The mouse down is swallowed so the field keeps focus
+// and its caret, which is where the token has to land.
+function ConnectionChip({
+  connection,
+  disabled,
+  onInsert,
+}: {
+  connection: UpstreamConnection
+  disabled: boolean
+  onInsert: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onInsert}
+      className="flex max-w-full items-center gap-1.5 rounded-md border border-border bg-card py-1 pr-2 pl-1 text-xs transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+    >
+      <NodeIcon type={connection.type} className="size-4" />
+      <span className="truncate">{connection.label}</span>
+    </button>
+  )
+}
+
 // The Editor tab: one input per field on the selected node, or an empty state.
 function Inspector({ node }: { node: StepNodeType | undefined }) {
   const { updateNodeData } = useReactFlow<StepNodeType>()
+
+  // Everything the nodes wired above this one expose, recomputed by the hook as
+  // edges come and go.
+  const connections = useUpstreamConnections(node)
+
+  // Which field a chip inserts into, and the live controls to read the caret
+  // from. A ref rather than state for the controls: mounting a field must not
+  // re-render the inspector.
+  const [activeKey, setActiveKey] = useState<string>()
+  const controls = useRef(new Map<string, FieldElement>())
 
   if (!node) {
     return (
@@ -131,6 +182,39 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
   const { type, title, values } = node.data
   const def: NodeDefinition = nodeRegistry[type]
 
+  // The field a chip lands in: the one last focused, or the first field when
+  // nothing has been touched yet. Looking the key up in this node's fields also
+  // clears a key left behind by the previously selected node.
+  const target =
+    def.fields.find((field) => field.key === activeKey) ?? def.fields[0]
+
+  const insert = (token: string) => {
+    if (!target) return
+
+    const control = controls.current.get(target.key)
+    const current = values[target.key] ?? ""
+
+    // Splice at the caret so a token can go mid-sentence. With no live control
+    // the selection is unknown, so the token appends instead.
+    const start = control?.selectionStart ?? current.length
+    const end = control?.selectionEnd ?? current.length
+    const next = `${current.slice(0, start)}${token}${current.slice(end)}`
+
+    updateNodeData(node.id, (currentNode) => ({
+      values: { ...currentNode.data.values, [target.key]: next },
+    }))
+
+    // The value lands on the next render, so the caret has to be restored after
+    // it, otherwise the browser drops it at the end of the new text.
+    requestAnimationFrame(() => {
+      const caret = start + token.length
+      const live = controls.current.get(target.key)
+
+      live?.focus()
+      live?.setSelectionRange(caret, caret)
+    })
+  }
+
   return (
     <Section title={title} icon={<NodeIcon type={type} />}>
       <div className="flex flex-col gap-3 p-3">
@@ -142,6 +226,11 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
               key={field.key}
               field={field}
               value={values[field.key] ?? ""}
+              inputRef={(element) => {
+                if (element) controls.current.set(field.key, element)
+                else controls.current.delete(field.key)
+              }}
+              onFocus={() => setActiveKey(field.key)}
               onChange={(value) =>
                 // The updater form reads the node as it is in the store, so
                 // fast typing cannot write back a stale values object. The edit
@@ -153,6 +242,25 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
               }
             />
           ))
+        )}
+
+        {connections.length > 0 && (
+          <div className="flex flex-col gap-2 border-t border-border pt-3">
+            <p className="text-xs font-medium text-muted-foreground">
+              Connections
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {connections.map((connection) => (
+                <ConnectionChip
+                  key={connection.token}
+                  connection={connection}
+                  // A node with no fields has nowhere to put a token.
+                  disabled={!target}
+                  onInsert={() => insert(connection.token)}
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </Section>
@@ -209,7 +317,10 @@ function Palette() {
     const nodes = getNodes()
 
     // A workflow starts in one place, so a second trigger has nothing to mean.
-    if (def.kind === "trigger" && nodes.some((n) => n.data.kind === "trigger")) {
+    if (
+      def.kind === "trigger" &&
+      nodes.some((n) => n.data.kind === "trigger")
+    ) {
       toast.error("A workflow can only have one trigger")
       return
     }
@@ -309,7 +420,7 @@ function ActionsMenu({ workflowId }: { workflowId: string }) {
             event.preventDefault()
 
             startDeleting(async () => {
-                await deleteWorkflowAction(workflowId)
+              await deleteWorkflowAction(workflowId)
             })
           }}
         >
@@ -323,10 +434,8 @@ function ActionsMenu({ workflowId }: { workflowId: string }) {
 
 // Kicks off a run of the current workflow.
 function RunButton({ workflowId }: { workflowId: string }) {
-
   const { getNodes, getEdges } = useReactFlow<StepNodeType>()
   const [ispending, startTransition] = useTransition()
-
 
   return (
     <Button

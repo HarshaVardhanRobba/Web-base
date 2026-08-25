@@ -1,6 +1,7 @@
 import { logger, metadata, task } from "@trigger.dev/sdk"
 import toposort from "toposort"
 import { createBrowser, sessionUrl } from "../lib/browserbase"
+import { interpolate } from "../lib/interpolate"
 import { nodeExecutors } from "../nodes/node-executors"
 import { getWorkflow } from "../test-data-lib/data"
 
@@ -46,6 +47,12 @@ export const runWorkflowTask = task({
       status: "pending",
     }))
 
+    // Every result produced so far, keyed by node id, so a later node can reach
+    // back through a {{ nodeId.field }} placeholder. toposort already put the
+    // nodes in dependency order, so anything a node names is in here by the time
+    // that node runs.
+    const outputs: Record<string, unknown> = {}
+
     const publish = () => metadata.set("steps", steps)
 
     publish()
@@ -75,10 +82,23 @@ export const runWorkflowTask = task({
         publish()
 
         try {
-          step.output = await nodeExecutors[node.data.type]({
-            values: node.data.values,
+          // Resolve placeholders against upstream output first, so the executor
+          // only ever sees finished text. A field with no placeholder in it comes
+          // back unchanged.
+          const values = Object.fromEntries(
+            Object.entries(node.data.values).map(([key, value]) => [
+              key,
+              interpolate(value, outputs),
+            ])
+          )
+
+          const output = await nodeExecutors[node.data.type]({
+            values,
             getStagehand: browser.getStagehand,
           })
+
+          outputs[id] = output
+          step.output = output
           step.status = "completed"
         } catch (error) {
           step.status = "failed"
