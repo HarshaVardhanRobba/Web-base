@@ -1,10 +1,15 @@
 import { auth } from "@clerk/nextjs/server"
 import { Liveblocks } from "@liveblocks/node"
+import { auth as triggerAuth } from "@trigger.dev/sdk"
 import { ReactFlowProvider } from "@xyflow/react"
 import { notFound } from "next/navigation"
 
 import { Room } from "@/workflows/components/room"
+import { WorkflowRunsProvider } from "@/workflows/components/workflow-runs-provider"
 import { WorkflowShell } from "@/workflows/components/workflow-shell"
+// Configures the SDK with this project key naming, for createPublicToken below.
+import "@/workflows/lib/trigger-client"
+import { workflowRunsTag } from "@/workflows/lib/run-tags"
 import { getWorkflow } from "@/workflows/test-data-lib/data"
 
 if (!process.env.LIVEBLOCKS_SECRET_KEY) {
@@ -48,13 +53,26 @@ export default async function Page({
     },
   })
 
+  // Read only, and only for the runs of this one workflow: the token goes to the
+  // browser, so it can do nothing beyond following this canvas. An hour outlives
+  // a normal editing session without leaving a long-lived token lying around.
+  const runsAccessToken = await triggerAuth.createPublicToken({
+    scopes: { read: { tags: [workflowRunsTag(id)] } },
+    expirationTime: "1h",
+  })
+
   return (
     <Room roomId={id}>
       {/* The palette in the sidebar adds nodes to the canvas, so both have to
           read the same React Flow store. The provider sits above the shell,
           which renders the canvas and the sidebar side by side. */}
       <ReactFlowProvider>
-        <WorkflowShell workflowId={id} />
+        {/* One subscription to this workflow's runs, shared by everything on
+            the canvas, so a step status is read from the same socket wherever
+            it is shown. */}
+        <WorkflowRunsProvider workflowId={id} accessToken={runsAccessToken}>
+          <WorkflowShell workflowId={id} />
+        </WorkflowRunsProvider>
       </ReactFlowProvider>
     </Room>
   )

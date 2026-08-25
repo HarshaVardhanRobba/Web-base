@@ -18,7 +18,7 @@ export async function openUrl({
 
   // domcontentloaded rather than a fixed sleep: act() and extract() reason over
   // the DOM, so waiting for every image to land buys nothing.
-  await page.goto(target, { waitUntil: "domcontentloaded" })
+  await page.goto(target, { waitUntil: "domcontentloaded", timeoutMs: 30_000 })
 
-  return `Opened ${target}`
+  return { url: page.url(), title: await page.title() }
 }

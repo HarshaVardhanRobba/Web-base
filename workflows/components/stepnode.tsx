@@ -1,13 +1,12 @@
 import { memo } from "react"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 
-import {
-  nodeRegistry,
-  type StepNodeType,
-} from "../nodes/settings"
+import { nodeRegistry, type StepNodeType } from "../nodes/settings"
+import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
+import { useLatestRunSteps } from "@/workflows/components/workflow-runs-provider"
 
-function StepNodeComponent({ data, selected }: NodeProps<StepNodeType>) {
+function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   const { type, kind, title, values } = data
   const def = nodeRegistry[type]
   const Icon = def.icon
@@ -16,10 +15,23 @@ function StepNodeComponent({ data, selected }: NodeProps<StepNodeType>) {
   // A trigger starts the flow and takes no input, so it has no target handle.
   const hasTarget = kind !== "trigger"
 
+  // The run publishes a status per node id, so a node finds its own by matching
+  // on id. A node the last run never reached has none.
+  const { steps, isLive } = useLatestRunSteps()
+  const status = steps.find((step) => step.id === id)?.status
+
+  // A run that ends mid-step leaves its last published status behind, so the
+  // node it died on stays marked running forever. Only a live run can actually
+  // have a step in flight, which is what stops the spinner.
+  const isRunning = status === "running" && isLive
+  const isFailed = status === "failed"
+
   return (
     <div
       className={cn(
-        "min-w-50 max-w-80 rounded-(--radius) border-2 border-border bg-card text-card-foreground",
+        "max-w-80 min-w-50 rounded-(--radius) border-2 border-border bg-card text-card-foreground",
+        isRunning && "border-blue-500",
+        isFailed && "border-destructive",
         selected && "ring-2 ring-ring ring-offset-2 ring-offset-background"
       )}
     >
@@ -39,25 +51,33 @@ function StepNodeComponent({ data, selected }: NodeProps<StepNodeType>) {
             def.accent
           )}
         >
-          <Icon className="size-4" />
+          {isRunning ? (
+            <Spinner className="size-4" />
+          ) : (
+            <Icon className="size-4" />
+          )}
         </div>
         <span className="text-sm font-semibold">{title}</span>
       </div>
 
-      {fields. length > 0 && (
+      {fields.length > 0 && (
         <>
-        <div className="border-t border-border" />
-        <div className="flex flex-col gap-1.5 px-3 py-2.5">
-          {fields.map((field) =>(
-        <div
-          key={field.key}
-          className="flex items-center justify-between gap-4 text-xs"
-        >
-        <span className="shrink-0 text-muted-foreground">{field. label}</span>
-        <span className="truncate font-medium">{values[field.key]}</span>
-        </div>
-          ))}
-        </div>
+          <div className="border-t border-border" />
+          <div className="flex flex-col gap-1.5 px-3 py-2.5">
+            {fields.map((field) => (
+              <div
+                key={field.key}
+                className="flex items-center justify-between gap-4 text-xs"
+              >
+                <span className="shrink-0 text-muted-foreground">
+                  {field.label}
+                </span>
+                <span className="truncate font-medium">
+                  {values[field.key]}
+                </span>
+              </div>
+            ))}
+          </div>
         </>
       )}
 

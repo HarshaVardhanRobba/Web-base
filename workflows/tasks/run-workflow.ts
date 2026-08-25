@@ -6,13 +6,11 @@ import { nodeExecutors } from "../nodes/node-executors"
 import { getWorkflow } from "../test-data-lib/data"
 
 // One entry per node the run will touch, written to run metadata as it changes
-// so the canvas can follow along without polling.
-export type StepProgress = {
+// so the canvas can follow along without polling. Node id and status only: the
+// canvas already holds the graph, so it looks up everything else by id.
+export type RunStep = {
   id: string
-  title: string
-  status: "pending" | "running" | "completed" | "failed"
-  output?: string
-  error?: string
+  status: "pending" | "running" | "done" | "failed"
 }
 
 // What the task needs to find the graph it should run. Exported so the server
@@ -41,11 +39,7 @@ export const runWorkflowTask = task({
 
     logger.log(`Running workflow ${workflow.name}`, { steps: order.length })
 
-    const steps: StepProgress[] = order.map((id) => ({
-      id,
-      title: byId.get(id)!.data.title,
-      status: "pending",
-    }))
+    const steps: RunStep[] = order.map((id) => ({ id, status: "pending" }))
 
     // Every result produced so far, keyed by node id, so a later node can reach
     // back through a {{ nodeId.field }} placeholder. toposort already put the
@@ -81,6 +75,11 @@ export const runWorkflowTask = task({
         step.status = "running"
         publish()
 
+        // Metadata writes are batched and sent in the background, so "done"
+        // would overwrite "running" before either left the worker and the
+        // canvas would never see a step in flight. Flushing pushes it now.
+        await metadata.flush()
+
         try {
           // Resolve placeholders against upstream output first, so the executor
           // only ever sees finished text. A field with no placeholder in it comes
@@ -98,13 +97,19 @@ export const runWorkflowTask = task({
           })
 
           outputs[id] = output
-          step.output = output
-          step.status = "completed"
+          step.status = "done"
         } catch (error) {
           step.status = "failed"
-          step.error = error instanceof Error ? error.message : String(error)
           publish()
+
+          // A thrown run has no output for the canvas to fall back on, so this
+          // flush is the only way the failed status ever reaches it.
+          await metadata.flush()
           publishSession()
+
+          logger.error(`Step failed: ${node.data.title}`, {
+            error: error instanceof Error ? error.message : String(error),
+          })
 
           // A failed step leaves the browser somewhere unexpected, so the rest
           // of the graph would run against the wrong page. Stop the run instead.
@@ -115,12 +120,14 @@ export const runWorkflowTask = task({
         publishSession()
       }
 
+      // Returning the steps as well as publishing them means a run that
+      // finishes has its final state in the output, whatever the last flush
+      // managed to send.
       return {
-        steps: steps.length,
+        steps,
         sessionUrl: browser.sessionId()
           ? sessionUrl(browser.sessionId()!)
           : undefined,
-        results: steps,
       }
     } finally {
       await browser.close()

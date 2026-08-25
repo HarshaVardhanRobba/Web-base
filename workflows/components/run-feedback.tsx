@@ -2,7 +2,7 @@
 
 import { useRealtimeRun } from "@trigger.dev/react-hooks"
 
-import type { runWorkflowTask, StepProgress } from "@/workflows/tasks/run-workflow"
+import type { runWorkflowTask, RunStep } from "@/workflows/tasks/run-workflow"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -44,13 +44,15 @@ export function RunFeedback({
 
   if (error) {
     return (
-      <p className="text-destructive text-xs">Realtime error: {error.message}</p>
+      <p className="text-xs text-destructive">
+        Realtime error: {error.message}
+      </p>
     )
   }
 
   if (!run) {
     return (
-      <p className="flex items-center gap-2 text-muted-foreground text-xs">
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Spinner className="size-3" />
         Connecting to run
       </p>
@@ -62,9 +64,8 @@ export function RunFeedback({
   // The task writes both of these to run metadata as it goes, so they land here
   // before the run finishes rather than only in the final output.
   const metadata = run.metadata as
-    | { steps?: StepProgress[]; sessionUrl?: string }
-    | undefined
-  const steps = metadata?.steps ?? []
+    { steps?: RunStep[]; sessionUrl?: string } | undefined
+  const steps = metadata?.steps ?? run.output?.steps ?? []
   const sessionUrl = metadata?.sessionUrl ?? run.output?.sessionUrl
 
   return (
@@ -74,7 +75,7 @@ export function RunFeedback({
         {isRunning ? <Spinner className="size-3" /> : null}
       </div>
 
-      <p className="font-mono text-muted-foreground text-[11px] break-all">
+      <p className="font-mono text-[11px] break-all text-muted-foreground">
         {run.id}
       </p>
 
@@ -94,17 +95,14 @@ export function RunFeedback({
           {steps.map((step) => (
             <li className="text-xs" key={step.id}>
               <span className="text-muted-foreground">{step.status}</span>{" "}
-              {step.title}
-              {step.error ? (
-                <span className="text-destructive"> {step.error}</span>
-              ) : null}
+              <span className="font-mono break-all">{step.id}</span>
             </li>
           ))}
         </ul>
       ) : null}
 
       {run.error ? (
-        <p className="text-destructive text-xs">{run.error.message}</p>
+        <p className="text-xs text-destructive">{run.error.message}</p>
       ) : null}
     </div>
   )
