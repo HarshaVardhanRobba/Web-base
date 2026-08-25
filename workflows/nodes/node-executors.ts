@@ -1,6 +1,6 @@
 import type { Stagehand } from "@browserbasehq/stagehand"
 
-import type { NodeType } from "./settings"
+import type { NodeType } from "@/workflows/nodes/settings"
 
 import { act } from "./executors/act"
 import { agent } from "./executors/agent"
@@ -14,9 +14,11 @@ export type NodeContext = {
   getStagehand: () => Promise<Stagehand>
 }
 
-// The return value is a short string for the logs panel and run metadata, or
-// undefined when the node produced nothing worth showing.
-export type NodeExecutor = (ctx: NodeContext) => Promise<string | undefined>
+// The return value is stored under the node id and is what a later node reaches
+// through a {{ nodeId.field }} placeholder, so a node that produces more than
+// one output returns an object whose keys match its manifest outputs. undefined
+// means the node produced nothing worth showing.
+export type NodeExecutor = (ctx: NodeContext) => Promise<unknown>
 
 // One entry per node type in the registry, so adding a node means adding an
 // entry here and nothing else. Total record, not Partial: leaving a registered

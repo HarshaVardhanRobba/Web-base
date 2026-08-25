@@ -15,5 +15,7 @@ export async function extract({
 
   const { extraction } = await stagehand.extract(step)
 
-  return extraction
+  // Wrapped rather than returned bare so a downstream placeholder names the
+  // field it wants, the same as every other node.
+  return { extraction }
 }

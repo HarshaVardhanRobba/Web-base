@@ -11,6 +11,25 @@ import { getWorkflow } from "../test-data-lib/data"
 export type RunStep = {
   id: string
   status: "pending" | "running" | "done" | "failed"
+  // What the node produced, already flattened to text. Without this the result
+  // of a node only ever reaches a {{ placeholder }} in a later node, so a node
+  // with nothing wired below it looks like it did nothing.
+  output?: string
+}
+
+// Metadata rides the realtime socket and the whole run has a size budget, so a
+// node that returns a page of extracted text is trimmed rather than shipped
+// whole. The untrimmed value stays in outputs for placeholders to read.
+const OUTPUT_LIMIT = 500
+
+function summarize(output: unknown): string | undefined {
+  if (output === undefined || output === null) return undefined
+
+  const text = typeof output === "string" ? output : JSON.stringify(output)
+
+  if (!text) return undefined
+
+  return text.length > OUTPUT_LIMIT ? `${text.slice(0, OUTPUT_LIMIT)}...` : text
 }
 
 // What the task needs to find the graph it should run. Exported so the server
@@ -97,7 +116,10 @@ export const runWorkflowTask = task({
           })
 
           outputs[id] = output
+          step.output = summarize(output)
           step.status = "done"
+
+          logger.log(`Step output: ${node.data.title}`, { output })
         } catch (error) {
           step.status = "failed"
           publish()

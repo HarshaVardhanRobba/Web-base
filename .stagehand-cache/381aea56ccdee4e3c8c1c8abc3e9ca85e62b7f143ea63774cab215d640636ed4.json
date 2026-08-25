@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "instruction": "Click on \"continue with Google\"",
+  "url": "https://www.linkedin.com/authwall?trk=gf&trkInfo=AQFZnTmQ-vmIdwAAAaA5No8A2zbLk8uDLxlmfH_4nIsx_0CSHxOwAr2v0NkXL6WIRiLG6CfKh9lPmd0HCD1KaFRdXRCi6lDcD6WkbS8vdgHIPPdx71BYnk58fmuoDcLUhqAgs0E=&original_referer=&sessionRedirect=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fharshavarthanrobba",
+  "variableKeys": [],
+  "actions": [
+    {
+      "selector": "xpath=/html[1]/body[1]/div[1]/main[1]/div[1]/form[1]/section[1]/div[3]/div[2]",
+      "description": "Button to continue sign up with Google",
+      "method": "click",
+      "arguments": []
+    }
+  ],
+  "actionDescription": "Button to continue sign up with Google",
+  "message": "Action [click] performed successfully on selector: xpath=/html[1]/body[1]/div[1]/main[1]/div[1]/form[1]/section[1]/div[3]/div[2]"
+}

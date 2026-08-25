@@ -1,5 +1,11 @@
 import type { Node } from "@xyflow/react"
-import { Globe, MousePointerClick, type LucideIcon } from "lucide-react"
+import {
+  Globe,
+  MousePointerClick,
+  Pointer,
+  ScanText,
+  type LucideIcon,
+} from "lucide-react"
 
 export type StepNodeKind = "trigger" | "action"
 
@@ -50,6 +56,42 @@ export const nodeRegistry = {
       { path: "url", label: "URL" },
       { path: "title", label: "Title" }
     ],
+  },
+  act: {
+    type: "act",
+    kind: "action",
+    label: "Act",
+    icon: Pointer,
+    accent: "bg-violet-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "Click the first search result",
+        multiline: true,
+      },
+    ],
+    outputs: [
+      { path: "success", label: "Worked" },
+      { path: "message", label: "Message" },
+      { path: "url", label: "URL" },
+    ],
+  },
+  extract: {
+    type: "extract",
+    kind: "action",
+    label: "Extract",
+    icon: ScanText,
+    accent: "bg-amber-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "The price of the first listing",
+        multiline: true,
+      },
+    ],
+    outputs: [{ path: "extraction", label: "Extraction" }],
   },
 } satisfies Record<string, NodeDefinition>
 

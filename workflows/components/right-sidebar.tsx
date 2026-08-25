@@ -159,7 +159,7 @@ function ConnectionChip({
 
 // The Editor tab: one input per field on the selected node, or an empty state.
 function Inspector({ node }: { node: StepNodeType | undefined }) {
-  const { updateNodeData } = useReactFlow<StepNodeType>()
+  const { updateNodeData, deleteElements } = useReactFlow<StepNodeType>()
 
   // Everything the nodes wired above this one expose, recomputed by the hook as
   // edges come and go.
@@ -262,6 +262,24 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
             </div>
           </div>
         )}
+
+        <div className="border-t border-border pt-3">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="w-full justify-start gap-2 px-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => {
+              // deleteElements reports remove changes through onNodesChange and
+              // onEdgesChange, which is what writes the removal into Liveblocks
+              // Storage for the room. It takes the edges attached to the node
+              // with it, so no edge is left pointing at nothing.
+              void deleteElements({ nodes: [{ id: node.id }] })
+            }}
+          >
+            <Trash2 className="size-3.5" />
+            Delete node
+          </Button>
+        </div>
       </div>
     </Section>
   )

@@ -96,6 +96,11 @@ export function RunFeedback({
             <li className="text-xs" key={step.id}>
               <span className="text-muted-foreground">{step.status}</span>{" "}
               <span className="font-mono break-all">{step.id}</span>
+              {step.output ? (
+                <p className="mt-0.5 wrap-break-word text-muted-foreground">
+                  {step.output}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>

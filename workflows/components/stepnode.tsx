@@ -1,7 +1,7 @@
 import { memo } from "react"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 
-import { nodeRegistry, type StepNodeType } from "../nodes/settings"
+import { nodeRegistry, type StepNodeType } from "@/workflows/nodes/settings"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 import { useLatestRunSteps } from "@/workflows/components/workflow-runs-provider"
@@ -10,7 +10,10 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   const { type, kind, title, values } = data
   const def = nodeRegistry[type]
   const Icon = def.icon
-  const fields = def.fields.filter((field) => values[field.key])
+  // Every field the node type declares, filled or not: a node that hides its
+  // empty fields collapses to a bare header and gives no hint of what it still
+  // needs. An unfilled field shows its placeholder greyed out instead.
+  const fields = def.fields
 
   // A trigger starts the flow and takes no input, so it has no target handle.
   const hasTarget = kind !== "trigger"
@@ -18,7 +21,8 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
   // The run publishes a status per node id, so a node finds its own by matching
   // on id. A node the last run never reached has none.
   const { steps, isLive } = useLatestRunSteps()
-  const status = steps.find((step) => step.id === id)?.status
+  const step = steps.find((entry) => entry.id === id)
+  const status = step?.status
 
   // A run that ends mid-step leaves its last published status behind, so the
   // node it died on stays marked running forever. Only a live run can actually
@@ -72,14 +76,30 @@ function StepNodeComponent({ id, data, selected }: NodeProps<StepNodeType>) {
                 <span className="shrink-0 text-muted-foreground">
                   {field.label}
                 </span>
-                <span className="truncate font-medium">
-                  {values[field.key]}
+                <span
+                  className={cn(
+                    "truncate font-medium",
+                    !values[field.key] && "font-normal text-muted-foreground/60"
+                  )}
+                >
+                  {values[field.key] || field.placeholder || "Not set"}
                 </span>
               </div>
             ))}
           </div>
         </>
       )}
+
+      {step?.output ? (
+        <>
+          <div className="border-t border-border" />
+          <div className="px-3 py-2.5">
+            <p className="line-clamp-3 text-xs wrap-break-word text-muted-foreground">
+              {step.output}
+            </p>
+          </div>
+        </>
+      ) : null}
 
       <Handle
         type="source"

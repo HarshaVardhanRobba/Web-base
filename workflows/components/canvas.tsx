@@ -72,6 +72,10 @@ export function Canvas() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onDelete={onDelete}
+        // React Flow only listens for Backspace by default, which leaves the
+        // Delete key doing nothing. Both keys remove the current selection, and
+        // the edges attached to a removed node go with it.
+        deleteKeyCode={["Delete", "Backspace"]}
         colorMode={resolvedTheme === "dark" ? "dark" : "light"}
         defaultEdgeOptions={{ type: "default" }}
         fitView

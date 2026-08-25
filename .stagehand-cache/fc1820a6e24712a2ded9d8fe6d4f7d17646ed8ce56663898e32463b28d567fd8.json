@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "instruction": "search for Ai engineer",
+  "url": "https://www.linkedin.com/authwall?trk=gf&trkInfo=AQF6nLrOOEkNZwAAAaA5MKNgquSdJLvKJQIIf-uXG6q1-z5CXRn5nnwm8aQPlNLofP1kL3mxe3qSzpviAcynSSQppKy8lHl2u12RzsDqJtWvJafup8lLomkrToY8dkwu0JOszAQ=&original_referer=&sessionRedirect=https%3A%2F%2Fwww.linkedin.com%2Fin%2Fharshavarthanrobba",
+  "variableKeys": [],
+  "actions": [
+    {
+      "selector": "xpath=/html[1]/body[1]/div[1]/main[1]/div[1]/form[1]/section[1]/button[1]",
+      "description": "Sign up confirmation button (Agree & Join) on the LinkedIn sign-up page.",
+      "method": "click",
+      "arguments": []
+    }
+  ],
+  "actionDescription": "Sign up confirmation button (Agree & Join) on the LinkedIn sign-up page.",
+  "message": "Action [click] performed successfully on selector: xpath=/html[1]/body[1]/div[1]/main[1]/div[1]/form[1]/section[1]/button[1]"
+}
