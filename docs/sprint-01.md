@@ -1,143 +1,57 @@
-# Sprint 01 - Access, Stack, and the Level 1 Loop
-
-**Owner:** Harsha Vardhan Robba (solo)
-**Repository:** `HarshaVardhanRobba/Web-base` (private)
-**Sprint window:** Week 1
-**Default branch:** `main`
-
 ## Stack
+Language: TypeScript. Framework: Next.js 16 (App Router) with React 19, web app. Test runner: Vitest. How to run: npm run dev for the Next.js server, plus npx trigger.dev@latest dev in a second terminal for background workflow runs.
 
-| Concern | Choice |
-| --- | --- |
-| Language | TypeScript |
-| Web framework | Next.js 16 (App Router) with React 19 - this is a web app, not a CLI |
-| Auth and tenancy | Clerk, with organizations enabled |
-| Database | Neon Postgres via `@neondatabase/serverless`, Drizzle ORM |
-| Background jobs | Trigger.dev v4 |
-| Browser automation | Browserbase with Stagehand |
-| Canvas | React Flow v12 (`@xyflow/react`) |
-| Collaboration | Liveblocks |
-| UI | shadcn/ui on Tailwind CSS v4 |
-| Test runner | Vitest (`npm test`, `npm run test:watch`) |
+## domain
+A multi-tenant workflow builder — each organization owns a set of workflows; a workflow is built visually with a node editor, and runs execute as background tasks that can drive a browser.
 
-### How the app runs
+## do-5
+sprint proves i can ship a change end to end and plan code with real stack
 
-Two processes, two terminals. The second one is not optional: a workflow run stays
-pending forever without it.
+## d0-7
+vscode, claude code extension, Eslint, tailwind, 
 
-```bash
-# terminal 1 - Next.js dev server on http://localhost:3000
-npm run dev
 
-# terminal 2 - Trigger.dev dev server, executes the background workflow tasks
-npx trigger.dev@latest dev
-```
+## Task-by-task explanation
 
-Secrets live in `.env.local`, which is gitignored and never committed. The list of
-required variables is in [README.md](../README.md); no key values appear anywhere in
-this repository.
+### 1 — Standup,
+File: `docs/standup-w1d1.md` (in Web-base repo).
+Yesterday = "program start" (day one, nothing prior). Today = clone repo, name stack/domain, write backlog, ship Level 1 through branch + PR. Blocker = none; git identity was unset, fixed repo-local.
 
-## Domain
+### 2 — Name stack
+Language TypeScript. Web framework Next.js 16 App Router + React 19 (web app, not CLI). Test runner Vitest. Run = two terminals: `npm run dev`, `npx trigger.dev@latest dev`. Second one not optional — runs hang pending without it. Pulled from repo package.json and README, not guessed.
 
-A multi-tenant workflow builder. Every organization owns its own set of workflows.
-A workflow is built visually in a node editor, and running it executes the graph as
-a durable background task that drives a cloud browser while progress streams back
-into the UI in realtime.
+### 3 — Name domain
+Multi-tenant workflow builder. Org owns workflows; workflow built in node editor; run executes as durable background task driving cloud browser, progress streams to UI. Core constraint: every query scoped by orgId, no org means redirect to /choose-organization. Fallback personal-delivery-system domain not used — real product domain exists.
 
-The tenancy rule is the core domain constraint: every query is scoped by `orgId`, and
-a user without an active organization is redirected to `/choose-organization` and
-cannot reach any workflow.
+### 4 — Clone repo
+`git clone https://github.com/HarshaVardhanRobba/Web-base.git` into `what/Web-base`.
+Repo exists, private, no fallback local init needed. Treated production-like: no direct commit to main, everything through branch + PR.
 
-This is the real product domain, so the fallback personal-delivery-system domain is
-not used.
+### 5 — Write sprint-01.md (in Web-base repo)
+Why it matters: sprint proves loop end to end — access, stack named, plan readable by someone else, change shipped branch-to-PR. Later sprints assume loop works.
+Backlog, 6 items, "As X I can Y so that Z" form, each with done-when + hour estimate:
+1. Sprint docs + Level 1 loop — 2h
+2. Failed run names failing node and error in logs panel — 6h
+3. Rename workflow from list, org-scoped — 3h
+4. Duplicate workflow, copies graph to new row — 4h
+5. Wait node — executor + registry + parity.test.ts passes — 5h
+6. Test pinning tenancy boundary in data.ts — 4h
+Owner: solo. Order + rationale written out. Risks: five external services block startup, trigger.config.ts ships foreign project ref, forgotten second terminal, first-sprint estimates have no velocity history, solo owner means no second reviewer.
 
-## Why this sprint matters
+### 6 — Branch, Level 1 change, commit, PR
+Branch `sprint-01/w1d1-docs` cut from main.
+Level 1 change = one line in README Layout block, adding `docs/` beside drizzle/, designs/, worklog/. Level 1 because it only documents a directory that now exists — no source, no config, no dependency touched, build and runtime cannot shift.
+Commit `94a7a0d`, 5 files, 309 insertions.
+PR https://github.com/HarshaVardhanRobba/Web-base/pull/1 against main, open. Remote host exists, so real PR — docs/pr-001.md fallback skipped.
 
-This sprint proves the loop end to end: I can get into the production-like repository,
-state exactly what it is built on, plan work as a backlog someone else could pick up,
-and ship a change through a branch, a commit, and a pull request. Every later sprint
-assumes that loop already works. If access, the stack, or the branch-to-PR path is
-still uncertain, then every estimate made after this point is a guess.
+### 7 — docs/ide.md (in Web-base repo)
+Machine: Windows 11 Home, PowerShell + Git Bash, git 2.43.0, gh 2.74.2. Editor VS Code + Claude Code extension. Extensions read live from `code --list-extensions`, grouped: used-by-this-stack (ESLint, Prettier, Tailwind, PostCSS, Error Lens, Prisma), API/debug (REST Client, Thunder Client, JWT decoder, Quokka), design/general, installed-for-other-projects (Java, Python, Go) marked unused here.
+Secrets: none in repo. Keys stay in gitignored .env.local; Trigger.dev CLI creds outside repo; gh token in OS keyring.
 
-## Backlog
+### 8 — Linux commands
+`docs/linux-w1.md` (in Web-base repo). Real output pasted, not typed from memory, ran in Git Bash so paths show /c/.
+pwd at status/, ls shows three entries, cd Web-base, pwd + ls again, then git status (on sprint-01/w1d1-docs, README modified, docs/ untracked) and git log -1 --oneline (a850cf3 updated readme). Ran before the commit, so log tip still points where main points.
+Doc explains reading: ls hides dotfiles, node_modules/ absent (no npm install yet), git status answers three questions at once, docs/ collapses to one line because nothing inside tracked yet.
 
-Items are ordered. Estimates are in focused hours.
-
-### 1. Sprint 01 documentation and the Level 1 loop
-
-**As a developer on this project, I can read `docs/` to learn the stack, the domain,
-and the sprint plan, so that I can start work without reverse-engineering the codebase.**
-
-- Done when: `docs/sprint-01.md`, `docs/ide.md`, `docs/linux-w1.md`, and
-  `docs/standup-w1d1.md` exist on a branch, one Level 1 change is committed, and a pull
-  request is open against `main`.
-- Estimate: 2h
-
-### 2. A failed run says which node failed and why
-
-**As an operator, I can see the failing node and its error message inside the run logs
-panel, so that I can fix a broken workflow without opening the Trigger.dev dashboard.**
-
-- Done when: a run that fails on a node shows that node id and the error text in the
-  logs panel; the run record persists both; a Vitest case covers the error being carried
-  out of the executor rather than swallowed.
-- Estimate: 6h
-
-### 3. Rename a workflow from the list
-
-**As an operator, I can rename a workflow from the sidebar list, so that a workspace of
-ten workflows stays readable.**
-
-- Done when: an inline rename persists through a server action in
-  `workflows/actions.ts`, the action is scoped by `orgId` so no cross-organization
-  rename is possible, and a Vitest case covers the org scoping.
-- Estimate: 3h
-
-### 4. Duplicate a workflow
-
-**As an operator, I can duplicate an existing workflow, so that I can experiment on a
-copy without risking one that already works.**
-
-- Done when: duplicating copies the `graph` column into a new row with a new id in the
-  same organization, the copy appears in the list with a distinct name, and the original
-  is untouched.
-- Estimate: 4h
-
-### 5. A Wait node
-
-**As an operator, I can drop a Wait node between two steps, so that a workflow can pause
-for a page to settle before the next node runs.**
-
-- Done when: an executor exists under `workflows/nodes/executors/`, it is registered in
-  `node-executors.ts` and `settings.ts`, `workflows/nodes/parity.test.ts` passes, and a
-  run visibly pauses for the configured duration.
-- Estimate: 5h
-
-### 6. A test that pins the tenancy boundary
-
-**As an organization admin, I can be certain another organization cannot read my
-workflows, so that the multi-tenant promise is enforced by a test and not by review.**
-
-- Done when: a Vitest case asserts every exported query in
-  `workflows/test-data-lib/data.ts` filters on `orgId`, and the case fails if a new query
-  is added without that filter.
-- Estimate: 4h
-
-## Order and rationale
-
-1 first, because the rest of the sprint depends on the branch-and-PR loop working.
-2 next, because debugging blind is what slows every other item down. 3 and 4 are small,
-self-contained wins that build familiarity with the server actions and the schema.
-5 exercises the node registry, which is the extension point the product grows through.
-6 last, because it is a guardrail rather than a feature, and it is worth writing once
-the shape of the data layer is settled.
-
-## Risks
-
-| Risk | Impact | Response |
-| --- | --- | --- |
-| Five external services (Clerk, Neon, Trigger.dev, Browserbase, Liveblocks) must all be configured before the app runs at all | A whole day can go to setup instead of features | Follow the README setup order exactly; treat setup as its own timebox and raise a blocker at standup if it exceeds it |
-| `trigger.config.ts` ships the original project reference, which another account cannot deploy to | Runs fail with a task-id-not-found error that looks like a code bug | Replace the reference before the first run, as the README step 2 says |
-| The Trigger.dev dev server is a second process that is easy to forget | Runs sit pending and look like a hang | Keep both terminals in one window layout; the troubleshooting table names this symptom first |
-| Estimates here are first-sprint estimates with no velocity history | Sprint may over- or under-commit | Track actual hours against these numbers and recalibrate in Sprint 02 |
-| Solo owner, so there is no second reviewer | Mistakes reach `main` unreviewed | Every change goes through a branch and a pull request even when self-merged, so there is always a diff to read before merge |
+### 10 — Live-explain script
+Changed one line in README Layout block, adding docs/ next to drizzle/ and worklog/. Level 1 because it documents a directory that now exists — no source, no config, no dependency touched, build and runtime cannot change. Stack is TypeScript on Next.js 16 App Router with React 19, Clerk for auth and organizations, Neon Postgres through Drizzle, Trigger.dev v4 for background runs, Browserbase for the browser, React Flow for canvas, Vitest for tests. Runs as two processes: npm run dev, and npx trigger.dev@latest dev in second terminal.
