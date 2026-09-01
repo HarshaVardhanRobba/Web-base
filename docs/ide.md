@@ -58,19 +58,6 @@ Java (`redhat.java`, the `vscjava.*` pack, `oracle.oracle-java`), Python
 `rodrigovallades.es7-react-js-snippets`). They are listed for completeness; nothing on
 this project depends on them.
 
-## Formatter, linter, test runner
-
-| Tool | Command | Config |
-| --- | --- | --- |
-| Formatter | `npm run format` (Prettier) | `.prettierrc`, `.prettierignore` |
-| Linter | `npm run lint` (ESLint) | `eslint.config.mjs` |
-| Test runner | `npm test` (Vitest, once) or `npm run test:watch` | `vitest.config.ts` |
-
-Test runner already exists on this stack: Vitest. Suite covers pure functions only -
-`workflows/lib/interpolate.test.ts`, `workflows/lib/graphvalidator.test.ts`,
-`workflows/nodes/parity.test.ts` - so it runs in seconds with no browser, database, or
-network involved.
-
 ## Secrets
 
 No secret is stored in this repository or in any editor setting file that is committed.
