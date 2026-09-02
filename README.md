@@ -219,6 +219,7 @@ src/trigger/                  Additional Trigger.dev task definitions
 drizzle/                      Generated SQL migrations
 designs/                      Reference screenshots for the editor UI
 worklog/                      Implementation notes
+docs/                         Sprint plan, environment notes, and shell logs
 ```
 
 ## How it fits together
