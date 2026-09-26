@@ -5,7 +5,9 @@ import type { NodeType } from "@/workflows/nodes/settings"
 import { act } from "./executors/act"
 import { agent } from "./executors/agent"
 import { extract } from "./executors/extract"
+import { observe } from "./executors/observe"
 import { openUrl } from "./executors/open-url"
+import { screenshot } from "./executors/screenshot"
 
 // What an executor is handed: the values typed into the node, plus a browser
 // that only starts once some node asks for it.
@@ -40,6 +42,18 @@ export const nodeExecutors: Record<NodeType, NodeExecutor> = {
       instruction: values.instruction,
     }),
 
+  screenshot: async ({ getStagehand }) =>
+    screenshot({ stagehand: await getStagehand() }),
+
+  observe: async ({ values, getStagehand }) =>
+    observe({
+      stagehand: await getStagehand(),
+      instruction: values.instruction,
+    }),
+
   agent: async ({ values, getStagehand }) =>
-    agent({ stagehand: await getStagehand(), goal: values.goal }),
+    agent({
+      stagehand: await getStagehand(),
+      instruction: values.instruction,
+    }),
 }

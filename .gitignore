@@ -41,3 +41,6 @@ next-env.d.ts
 
 # stagehand act cache
 .stagehand-cache
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

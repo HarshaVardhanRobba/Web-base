@@ -2,9 +2,10 @@
 
 import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow"
 import { Controls, ReactFlow } from "@xyflow/react"
-import type { Edge, NodeTypes } from "@xyflow/react"
+import type { Edge, EdgeTypes, NodeTypes } from "@xyflow/react"
 import { useTheme } from "next-themes"
 
+import { ShinyEdge, SHINY_EDGE_GRADIENT_ID } from "./shiny-edge"
 import { StepNode } from "./stepnode"
 import { nodeRegistry, type StepNodeType } from "../nodes/settings"
 
@@ -15,6 +16,27 @@ import "@xyflow/react/dist/style.css"
 
 const nodeTypes: NodeTypes = {
   step: StepNode,
+}
+
+const edgeTypes: EdgeTypes = {
+  shiny: ShinyEdge,
+}
+
+// The gradient every ShinyEdge paints its stroke with, defined once here since
+// an SVG id is document-global. offset colors read CSS variables so the edge
+// stays on-theme in both light and dark mode without its own switch.
+function ShinyEdgeDefs() {
+  return (
+    <svg width={0} height={0}>
+      <defs>
+        <linearGradient id={SHINY_EDGE_GRADIENT_ID}>
+          <stop offset="0%" stopColor="var(--color-primary)" />
+          <stop offset="50%" stopColor="var(--color-ring)" />
+          <stop offset="100%" stopColor="var(--color-primary)" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
 }
 
 const initialNodes: StepNodeType[] = [
@@ -66,6 +88,7 @@ export function Canvas() {
     <div className="size-full">
       <ReactFlow
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -77,10 +100,11 @@ export function Canvas() {
         // the edges attached to a removed node go with it.
         deleteKeyCode={["Delete", "Backspace"]}
         colorMode={resolvedTheme === "dark" ? "dark" : "light"}
-        defaultEdgeOptions={{ type: "default" }}
+        defaultEdgeOptions={{ type: "shiny" }}
         fitView
         fitViewOptions={{ maxZoom: 1, padding: 0.4 }}
       >
+        <ShinyEdgeDefs />
         <Controls />
         <Cursors />
       </ReactFlow>

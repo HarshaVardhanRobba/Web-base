@@ -1,8 +1,9 @@
 "use client"
 
 import { useRef, useState, useTransition } from "react"
-import { useNodes, useReactFlow, useStoreApi } from "@xyflow/react"
-import { MoreHorizontal, Play, Trash2 } from "lucide-react"
+import { useEdges, useNodes, useReactFlow, useStoreApi } from "@xyflow/react"
+import type { Edge } from "@xyflow/react"
+import { MoreHorizontal, Play, Trash2, Waypoints } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -285,6 +286,40 @@ function Inspector({ node }: { node: StepNodeType | undefined }) {
   )
 }
 
+// The Editor tab when an edge, not a node, is the current selection: nothing
+// to configure on an edge, just a way to remove the connection without
+// hunting for a delete control that floats on the edge itself.
+function EdgeInspector({ edge }: { edge: Edge }) {
+  const { deleteElements } = useReactFlow<StepNodeType>()
+
+  return (
+    <Section title="Connection" icon={<Waypoints className="size-4" />}>
+      <div className="flex flex-col gap-3 p-3">
+        <p className="text-xs text-muted-foreground">
+          Connects one node to the next. Selecting it here is the same as
+          clicking the edge on the canvas.
+        </p>
+
+        <div className="border-t border-border pt-3">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="w-full justify-start gap-2 px-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => {
+              // Same removal path as a node delete: reported through
+              // onEdgesChange, which writes it into Liveblocks Storage.
+              void deleteElements({ edges: [{ id: edge.id }] })
+            }}
+          >
+            <Trash2 className="size-3.5" />
+            Delete connection
+          </Button>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Toolbar tab — adds nodes to the canvas, grouped by kind.
 // ---------------------------------------------------------------------------
@@ -490,10 +525,12 @@ function RunButton({ workflowId }: { workflowId: string }) {
 export function RightSidebar({ workflowId }: { workflowId: string }) {
   const [tab, setTab] = useState("toolbar")
 
-  // The nodes come from the shared React Flow store, so the sidebar sees the
-  // same selection the canvas does.
+  // Nodes and edges come from the shared React Flow store, so the sidebar
+  // sees the same selection the canvas does.
   const nodes = useNodes<StepNodeType>()
-  const selected = nodes.find((node) => node.selected)
+  const edges = useEdges()
+  const selectedNode = nodes.find((node) => node.selected)
+  const selectedEdge = edges.find((edge) => edge.selected)
 
   // TODO: auto-switch to the Editor tab when the selection changes.
 
@@ -528,7 +565,11 @@ export function RightSidebar({ workflowId }: { workflowId: string }) {
           <Palette />
         </TabsContent>
         <TabsContent value="editor" className="flex min-h-0 flex-col">
-          <Inspector node={selected} />
+          {selectedEdge ? (
+            <EdgeInspector edge={selectedEdge} />
+          ) : (
+            <Inspector node={selectedNode} />
+          )}
         </TabsContent>
       </Tabs>
     </ResizablePanel>

@@ -1,7 +1,8 @@
-import { logger, metadata, task } from "@trigger.dev/sdk"
+import { logger, metadata, task, wait } from "@trigger.dev/sdk"
 import toposort from "toposort"
 import { createBrowser, sessionUrl } from "../lib/browserbase"
 import { interpolate } from "../lib/interpolate"
+import { VerificationRequiredError } from "../lib/verification"
 import { nodeExecutors } from "../nodes/node-executors"
 import { getWorkflow } from "../test-data-lib/data"
 
@@ -10,11 +11,21 @@ import { getWorkflow } from "../test-data-lib/data"
 // canvas already holds the graph, so it looks up everything else by id.
 export type RunStep = {
   id: string
-  status: "pending" | "running" | "done" | "failed"
+  status: "pending" | "running" | "waiting" | "done" | "failed"
   // What the node produced, already flattened to text. Without this the result
   // of a node only ever reaches a {{ placeholder }} in a later node, so a node
   // with nothing wired below it looks like it did nothing.
   output?: string
+}
+
+// Published to metadata only while a step is stalled on a security checkpoint,
+// so the canvas can show a Live View link and a Resume button, and cleared as
+// soon as the token is completed or the run gives up on it.
+export type PendingVerification = {
+  stepId: string
+  url: string
+  tokenId: string
+  publicToken: string
 }
 
 // Metadata rides the realtime socket and the whole run has a size budget, so a
@@ -110,10 +121,56 @@ export const runWorkflowTask = task({
             ])
           )
 
-          const output = await nodeExecutors[node.data.type]({
-            values,
-            getStagehand: browser.getStagehand,
-          })
+          const runStep = () =>
+            nodeExecutors[node.data.type]({
+              values,
+              getStagehand: browser.getStagehand,
+            })
+
+          let output: unknown
+
+          try {
+            output = await runStep()
+          } catch (error) {
+            if (!(error instanceof VerificationRequiredError)) throw error
+
+            // A checkpoint page is not a failed step, it is a stalled one: pause
+            // the run on a waitpoint token instead of failing, so a person can
+            // clear it in the Live View and the same node runs again once they
+            // do. The token times out on its own if nobody shows up.
+            const token = await wait.createToken({ timeout: "15m" })
+
+            step.status = "waiting"
+            metadata.set("verification", {
+              stepId: step.id,
+              url: error.url,
+              tokenId: token.id,
+              publicToken: token.publicAccessToken,
+            } satisfies PendingVerification)
+            publish()
+            publishSession()
+            await metadata.flush()
+
+            logger.log(`Waiting on manual verification at ${error.url}`, {
+              tokenId: token.id,
+            })
+
+            const resolved = await wait.forToken(token.id)
+
+            metadata.del("verification")
+
+            if (!resolved.ok) {
+              throw new Error(
+                `Verification at ${error.url} was not cleared in time`
+              )
+            }
+
+            step.status = "running"
+            publish()
+            await metadata.flush()
+
+            output = await runStep()
+          }
 
           outputs[id] = output
           step.output = summarize(output)

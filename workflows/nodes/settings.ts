@@ -1,9 +1,12 @@
 import type { Node } from "@xyflow/react"
 import {
+  Bot,
+  Camera,
   Globe,
   MousePointerClick,
   Pointer,
   ScanText,
+  Search,
   type LucideIcon,
 } from "lucide-react"
 
@@ -93,6 +96,52 @@ export const nodeRegistry = {
     ],
     outputs: [{ path: "extraction", label: "Extraction" }],
   },
+  "screenshot": {
+    type: "screenshot",
+    kind: "action",
+    label: "screenshot",
+    icon: Camera,
+    accent: "bg-rose-500 text-white",
+    fields: [],
+    outputs: [{ path: "screenshot", label: "Screenshot" }],
+  },
+  observe: {
+    type: "observe",
+    kind: "action",
+    label: "Observe",
+    icon: Search,
+    accent: "bg-sky-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "Find the add to cart button",
+        multiline: true,
+      },
+    ],
+    outputs: [{ path: "matches", label: "Matches" }],
+  },
+  agent: {
+    type: "agent",
+    kind: "action",
+    label: "Agent",
+    icon: Bot,
+    accent: "bg-fuchsia-500 text-white",
+    fields: [
+      {
+        key: "instruction",
+        label: "Instruction",
+        placeholder: "Search for an HDMI cable and open the first result",
+        multiline: true,
+      },
+    ],
+    outputs: [
+      { path: "success", label: "Worked" },
+      { path: "message", label: "Message" },
+      { path: "completed", label: "Completed" },
+    ],
+  },
+
 } satisfies Record<string, NodeDefinition>
 
 export type NodeType = keyof typeof nodeRegistry

@@ -29,12 +29,41 @@ export function createBrowser(): BrowserHandle {
             throw new Error("BROWSERBASE_API_KEY is not set")
           }
 
-          // The Browserbase API key alone identifies the project, and leaving
-          // model unset routes the LLM calls through Model Gateway on that same
-          // key, so no provider key is needed.
+          if (!process.env.OPENAI_API_KEY) {
+            throw new Error("OPENAI_API_KEY is not set")
+          }
+
+          // A Browserbase context carries cookies and local storage between
+          // sessions, so a site logged into once stays logged in on later runs
+          // rather than every run starting at a login wall. persist writes any
+          // new cookies back at the end of the session. Both env vars have to
+          // be set for it, since a context is addressed within its project.
+          const contextId = process.env.BROWSERBASE_CONTEXT_ID
+          const projectId = process.env.BROWSERBASE_PROJECT_ID
+
+          const withContext =
+            contextId && projectId
+              ? {
+                  browserbaseSessionCreateParams: {
+                    projectId,
+                    browserSettings: {
+                      context: { id: contextId, persist: true },
+                    },
+                  },
+                }
+              : {}
+
+          // Leaving model unset would route LLM calls through Stagehand Model
+          // Gateway on the Browserbase key, but that free trial period has
+          // expired for this account, so calls go straight to OpenAI instead.
           const instance = new Stagehand({
             env: "BROWSERBASE",
             apiKey: process.env.BROWSERBASE_API_KEY,
+            model: {
+              modelName: "openai/gpt-4.1-mini",
+              apiKey: process.env.OPENAI_API_KEY,
+            },
+            ...withContext,
             verbose: 0,
             // Pino spawns its transport in a worker thread loaded by file
             // path, and that path does not survive the Trigger.dev bundle, so
