@@ -5,6 +5,8 @@ organization owns a set of workflows; a workflow opens in a node editor backed b
 React Flow, and runs execute as durable Trigger.dev tasks that drive a cloud
 browser while their progress streams back into the UI in realtime.
 
+**Live deployment:** [web-base-workflow.vercel.app](https://web-base-workflow.vercel.app/)
+
 ## Stack
 
 | Concern | Choice |
@@ -195,11 +197,13 @@ or network, which is why it finishes in seconds:
 app/
   (auth)/                     Clerk sign-in and sign-up catch-all routes
   (dashboard)/                Sidebar shell; workflow list and /workflows/[id]
+  (marketing)/welcome/        Public landing page shown before sign-in
   api/liveblocks/auth/        Liveblocks room authentication endpoint
   choose-organization/        Clerk task screen for picking an organization
   layout.tsx                  ClerkProvider, ThemeProvider, fonts, Toaster
 components/
   ui/                         shadcn/ui primitives
+  marketing/                  Hero, canvas preview, live runs feed for the welcome page
   side-bar.tsx                Organization switcher plus the workflow list
 lib/
   db/schema.ts                Drizzle tables and inferred row types
@@ -218,6 +222,7 @@ workflows/
 src/trigger/                  Additional Trigger.dev task definitions
 drizzle/                      Generated SQL migrations
 designs/                      Reference screenshots for the editor UI
+public/marketing/             Screenshots used on the welcome page
 worklog/                      Implementation notes
 ```
 
