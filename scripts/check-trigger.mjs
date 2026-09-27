@@ -17,6 +17,8 @@ const SKIP_DIRECTORIES = new Set([
   ".git",
   ".next",
   ".trigger",
+  ".claude",
+  ".agents",
   "node_modules",
   "drizzle",
   "public",
@@ -55,7 +57,12 @@ function walk(directory) {
 
     const full = join(directory, entry)
 
-    if (statSync(full).isDirectory()) {
+    // A symlink whose target was not copied into the build stats as missing, so
+    // skip what cannot be read rather than failing the whole check.
+    const stats = statSync(full, { throwIfNoEntry: false })
+    if (!stats) continue
+
+    if (stats.isDirectory()) {
       found.push(...walk(full))
       continue
     }
